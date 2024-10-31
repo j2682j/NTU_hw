@@ -1,6 +1,7 @@
 from typing import Any, List, Tuple
 import numpy as np
 import matplotlib.pyplot as plt
+from sys import stdout
 
 
 def read_libsvm_file(filepath: str, dim: int, num_examples: int = 8192)\
@@ -114,8 +115,13 @@ for k in range(1126):
     Ein_wlin = Error_measure(X_train, y_train, w_lin)
     Eout_wlin = Error_measure(X_test, y_test, w_lin)
 
-    w_sgd, Ein_records, Eout_records = sgd(X_train, y_train)
+    all_Ein_wlin.append(Ein_wlin)
+    all_Eout_wlin.append(Eout_wlin)
 
+    w_sgd, Ein_records, Eout_records = sgd(X_train, y_train)
+    stdout.write(f"w_sgd: {w_sgd}\n".replace("np.float64", ""))
+    # stdout.write(f"Ein_records: {Ein_records}\n".replace("np.float64", ""))
+    # stdout.write(f"Eout_records: {Eout_records}\n".replace("np.float64", ""))
     if k == 0:
         Ein_sgd_all: np.ndarray[Any,
                                 np.dtype[np.float64]] = np.array(Ein_records)
@@ -128,8 +134,8 @@ for k in range(1126):
 Ein_sgd_avg = Ein_sgd_all / 1126
 Eout_sgd_avg = Eout_sgd_all / 1126
 
-avg_Ein_wlin = np.mean(all_Ein_wlin) # todo
-avg_Eout_wlin = np.mean(all_Eout_wlin) # todo
+avg_Ein_wlin = np.mean(all_Ein_wlin)  # todo
+avg_Eout_wlin = np.mean(all_Eout_wlin)  # todo
 
 # 繪製 Ein 和 Eout 的變化圖
 iterations = np.arange(200, 100001, 200)
