@@ -90,64 +90,69 @@ def Error_measure(X: np.ndarray[Any, np.dtype[np.float64]],
     return total_square_error / len(X)
 
 
-# 參數設定
-N = 64          # 訓練樣本數量
-total_examples = 8192
-feature_dim = 12  # 特徵維度，根據檔案內容設定
+def main():
+    # 參數設定
+    N = 64          # 訓練樣本數量
+    total_examples = 8192
+    feature_dim = 12  # 特徵維度，根據檔案內容設定
 
-# 讀取資料集
-X, y = read_libsvm_file(
-    'C:/Users/user/Desktop/台大機器學習/HW4/cpusmall_scale.txt', feature_dim, total_examples)
+    # 讀取資料集
+    X, y = read_libsvm_file(
+        'C:/Users/user/Desktop/台大機器學習/HW4/cpusmall_scale.txt', feature_dim, total_examples)
 
-all_Ein_wlin, all_Eout_wlin = [], []
-Ein_sgd_all, Eout_sgd_all = None, None
+    all_Ein_wlin, all_Eout_wlin = [], []
+    Ein_sgd_all, Eout_sgd_all = None, None
 
-for k in range(1126):
-    # 隨機選擇N個樣本作為訓練集
-    np.random.seed(k)
-    random_indices = np.random.choice(total_examples, N, replace=False)
-    X_train, y_train = X[random_indices], y[random_indices]
+    for k in range(1126):
+        # 隨機選擇N個樣本作為訓練集
+        np.random.seed(k)
+        random_indices = np.random.choice(total_examples, N, replace=False)
+        X_train, y_train = X[random_indices], y[random_indices]
 
-    test_indices = np.setdiff1d(range(total_examples), random_indices)
-    X_test, y_test = X[test_indices], y[test_indices]
+        test_indices = np.setdiff1d(range(total_examples), random_indices)
+        X_test, y_test = X[test_indices], y[test_indices]
 
-    w_lin = linear_regression(X_train, y_train)
-    Ein_wlin = Error_measure(X_train, y_train, w_lin)
-    Eout_wlin = Error_measure(X_test, y_test, w_lin)
+        w_lin = linear_regression(X_train, y_train)
+        Ein_wlin = Error_measure(X_train, y_train, w_lin)
+        Eout_wlin = Error_measure(X_test, y_test, w_lin)
 
-    all_Ein_wlin.append(Ein_wlin)
-    all_Eout_wlin.append(Eout_wlin)
+        all_Ein_wlin.append(Ein_wlin)
+        all_Eout_wlin.append(Eout_wlin)
 
-    w_sgd, Ein_records, Eout_records = sgd(X_train, y_train)
-    stdout.write(f"w_sgd: {w_sgd}\n".replace("np.float64", ""))
-    # stdout.write(f"Ein_records: {Ein_records}\n".replace("np.float64", ""))
-    # stdout.write(f"Eout_records: {Eout_records}\n".replace("np.float64", ""))
-    if k == 0:
-        Ein_sgd_all: np.ndarray[Any,
-                                np.dtype[np.float64]] = np.array(Ein_records)
-        Eout_sgd_all: np.ndarray[Any,
-                                 np.dtype[np.float64]] = np.array(Eout_records)
-    else:
-        Ein_sgd_all += np.array(Ein_records)
-        Eout_sgd_all += np.array(Eout_records)
+        w_sgd, Ein_records, Eout_records = sgd(X_train, y_train)
+        stdout.write(f"w_sgd: {w_sgd}\n".replace("np.float64", ""))
+        # stdout.write(f"Ein_records: {Ein_records}\n".replace("np.float64", ""))
+        # stdout.write(f"Eout_records: {Eout_records}\n".replace("np.float64", ""))
+        if k == 0:
+            Ein_sgd_all: np.ndarray[Any,
+                                    np.dtype[np.float64]] = np.array(Ein_records)
+            Eout_sgd_all: np.ndarray[Any,
+                                     np.dtype[np.float64]] = np.array(Eout_records)
+        else:
+            Ein_sgd_all += np.array(Ein_records)
+            Eout_sgd_all += np.array(Eout_records)
 
-Ein_sgd_avg = Ein_sgd_all / 1126
-Eout_sgd_avg = Eout_sgd_all / 1126
+    Ein_sgd_avg = Ein_sgd_all / 1126
+    Eout_sgd_avg = Eout_sgd_all / 1126
 
-avg_Ein_wlin = np.mean(all_Ein_wlin)  # todo
-avg_Eout_wlin = np.mean(all_Eout_wlin)  # todo
+    avg_Ein_wlin = np.mean(all_Ein_wlin)
+    avg_Eout_wlin = np.mean(all_Eout_wlin)
 
-# 繪製 Ein 和 Eout 的變化圖
-iterations = np.arange(200, 100001, 200)
-plt.plot(iterations, Ein_sgd_avg, label="Average Ein(w_t)")
-plt.plot(iterations, Eout_sgd_avg, label="Average Eout(w_t)")
-plt.axhline(y=avg_Ein_wlin, color='r', linestyle='--',
-            label="Average Ein(w_lin)")
-plt.axhline(y=avg_Eout_wlin, color='b', linestyle='--',
-            label="Average Eout(w_lin)")
-plt.xlabel("Iterations")
-plt.ylabel("Error")
-plt.legend()
-plt.title("SGD: Ein and Eout over iterations")
-plt.grid(True)
-plt.show()
+    # 繪製 Ein 和 Eout 的變化圖
+    iterations = np.arange(200, 100001, 200)
+    plt.plot(iterations, Ein_sgd_avg, label="Average Ein(w_t)")
+    plt.plot(iterations, Eout_sgd_avg, label="Average Eout(w_t)")
+    plt.axhline(y=avg_Ein_wlin, color='r', linestyle='--',
+                label="Average Ein(w_lin)")
+    plt.axhline(y=avg_Eout_wlin, color='b', linestyle='--',
+                label="Average Eout(w_lin)")
+    plt.xlabel("Iterations")
+    plt.ylabel("Error")
+    plt.legend()
+    plt.title("SGD: Ein and Eout over iterations")
+    plt.grid(True)
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
