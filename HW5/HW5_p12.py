@@ -1,13 +1,21 @@
 from liblinear.liblinearutil import *
 import numpy as np
-import ctypes
 import matplotlib.pyplot as plt
 
 # Load the data file
-def load_data(filename):
+def load_data(filename, target_classes = [2, 6]):
     y, x = svm_read_problem(filename)
     y = np.array(y)
     x = np.array(x)
+    
+    # Filter out the data with target classes
+    indices = np.where((y == target_classes[0]) | (y == target_classes[1]))[0]
+    y = y[indices]
+    x = x[indices]
+
+    # Change the label to -1 and 1
+    y = np.where(y == target_classes[0], -1, 1)
+    
     return y, x
 
 def main(): 
