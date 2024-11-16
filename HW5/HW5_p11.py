@@ -32,10 +32,10 @@ def main():
         y_test, x_test = load_data('C:/Users/user/Desktop/NTU_myHW/HW5/mnist.scale.test/mnist.scale.t')
         
         np.random.seed()
-        random_indices = np.random.choice(len(y), 8000, replace=False)
+        random_indices = np.random.choice(len(y_train), 8000, replace=False)
         y_subtrain, x_subtrain = y_train[random_indices], x_train[random_indices]
 
-        test_indices = np.setdiff1d(range(len(y)), random_indices)
+        test_indices = np.setdiff1d(range(len(y_train)), random_indices)
         y_val, x_val = y_train[test_indices], x_train[test_indices]
         
         
@@ -55,8 +55,6 @@ def main():
         model = train(y_train, x_train, f'-s 6 -c {1/lambda_star} -q')
         _, Eout_g, _ = predict(y_test, x_test, model, '-q')
         Eout_g_list.append(100 - Eout_g[0])
-        print(Eout_g_list)
-
 
     # Display the results of Eout(g)
     plt.figure(figsize=(8, 6))
