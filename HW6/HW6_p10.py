@@ -62,6 +62,37 @@ def train_SVM(X, y, C_values, Q_values):
             print(f"C={C}, Q={Q}, Support Vectors={support_vector_count}")
     return results
 
+# Plot the number of support vectors for each combination of C and Q
+def plot_support_vectors(results):
+    """
+    Plots the number of support vectors for each (C, Q) combination.
+
+    Args:
+        results (dict): Results from train_SVM, where keys are (C, Q) tuples and values are the number of support vectors.
+    """
+    # Extract data for plotting
+    C_values = [key[0] for key in results.keys()]
+    Q_values = [key[1] for key in results.keys()]
+    support_vector_counts = list(results.values())
+
+    # Create scatter plot
+    plt.figure(figsize=(10, 6))
+    scatter = plt.scatter(C_values, Q_values, c=support_vector_counts, cmap='viridis', s=100)
+    plt.colorbar(scatter, label='Number of Support Vectors')
+
+    # Label axes and title
+    plt.xlabel('C Values')
+    plt.ylabel('Q Values')
+    plt.title('Support Vector Counts for Different (C, Q) Combinations')
+
+    # Annotate each point with its support vector count
+    for i, count in enumerate(support_vector_counts):
+        plt.text(C_values[i], Q_values[i], str(count), fontsize=9, ha='center', va='center', color='black')
+
+    # Show plot
+    plt.grid(True)
+    plt.show()
+
 
 def main():
     # Step 1: Load and prepare data
@@ -81,8 +112,7 @@ def main():
     print(f"Minimum number of support vectors: {min_num_support_vectors} for C={min[0][0]} and Q={min[0][1]}")
 
     # Step 5: Plot the number of support vectors for each combination of C and Q
-    
-
+    plot_support_vectors(results)
 
 if __name__ == "__main__":
     main()
