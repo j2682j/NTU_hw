@@ -4,7 +4,7 @@ import ctypes
 import matplotlib.pyplot as plt
 
 # Read the data
-def load_and_prepare_data(file_path, target_classes=[3, 7]):
+def load_and_prepare_data(file_path):
     """
     Load the mnist.scale dataset and filter it for labels 3 and 7.
 
@@ -14,19 +14,17 @@ def load_and_prepare_data(file_path, target_classes=[3, 7]):
     Returns:
         tuple: (features, labels) for the filtered data.
     """
-    y, x = svm_read_problem(file_path)
-    y = np.array(y)
-    x = np.array(x)
-
-    # Filter out the data with target classes
-    indices = np.where((y == target_classes[0]) | (y == target_classes[1]))[0]
-    y = y[indices]
-    x = x[indices]
-
-    # Change the label to -1 and 1
-    y = np.where(y == target_classes[0], -1, 1)
-
-    return y, x
+    X, y = [], []
+    with open(file_path, 'r') as f:
+        for line in f:
+            parts = line.strip().split()
+            label = int(parts[0])
+            if label == 3 or label == 7:
+                y.append(1 if label == 3 else -1)  # Map 3 -> 1, 7 -> -1
+                features = {int(k): float(v) for k, v in (item.split(':') for item in parts[1:])}
+                X.append(features)
+    return X, y
+    
 
 
 # Find the number of support vectors for each combination of C and Q
@@ -51,15 +49,14 @@ def train_SVM(X, y, C_values, Q_values):
         for Q in Q_values:
             
             param = f"-s 0 -t 1 -g 1 -r 1 -c {C} -d {Q} -q"
-            
-            prob = svm_problem(y, X)
 
-            model = svm_train(prob, param)
+            model = svm_train(y, X, param)
 
             # Get the number of support vectors
-            support_vector_count = np.ctypeslib.as_ctypes(model.l)
+            support_vector_count = model.l
             results[(C, Q)] = support_vector_count
-            print(f"C={C}, Q={Q}, Support Vectors={support_vector_count}")
+            print(f"C={C}, Q={Q}, # of Support Vectors={support_vector_count}")
+
     return results
 
 # Plot the number of support vectors for each combination of C and Q
@@ -97,22 +94,22 @@ def plot_support_vectors(results):
 def main():
     # Step 1: Load and prepare data
     data_set_path = "C:/Users/user/Desktop/NTU_myHW/HW5/mnist.scale.train/mnist.scale" 
-    X, y = load_and_prepare_data(data_set_path)
+    X_train, y_train = load_and_prepare_data(data_set_path)
 
     # Step 2: Define parameter values
     C_values = [0.1, 1, 10]
     Q_values = [2, 3, 4]
 
-    # Step 3: Count Support Vectors, Find min # of support vectors 
-    results = train_SVM(X, y, C_values, Q_values)
-
+    # Step 3: Count Support Vectors
+    results_list = train_SVM(X_train, y_train, C_values, Q_values)
+    
     # Step 4: Find the minimum number of support vectors
-    min_num_support_vectors = min(results.values())
-    min = [key for key, value in min_num_support_vectors.items() if value == min_num_support_vectors]
-    print(f"Minimum number of support vectors: {min_num_support_vectors} for C={min[0][0]} and Q={min[0][1]}")
+    min_num_support_vectors = min(results_list.values())
+    ans = {key: value for key, value in results_list.items() if value == min_num_support_vectors}
+    
 
     # Step 5: Plot the number of support vectors for each combination of C and Q
-    plot_support_vectors(results)
+    plot_support_vectors(results_list)
 
 if __name__ == "__main__":
     main()
