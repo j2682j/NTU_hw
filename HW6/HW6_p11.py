@@ -132,7 +132,7 @@ def plot_margin(results_list):
 
     # Annotate each point with its support vector count
     for i, value in enumerate(margin_list):
-        plt.text(C_values[i], gamma_values[i], f"{value:.2e}", fontsize=9, ha='center', va='center', color='black')
+        plt.text(C_values[i], gamma_values[i], f"{value:.3e}", fontsize=9, ha='center', va='center', color='black')
 
     # Show plot
     plt.grid(True)
