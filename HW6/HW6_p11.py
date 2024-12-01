@@ -132,7 +132,7 @@ def plot_margin(results_list):
 
     # Annotate each point with its support vector count
     for i, value in enumerate(margin_list):
-        plt.text(C_values[i], gamma_values[i], f"{value:.3e}", fontsize=9, ha='center', va='center', color='black')
+        plt.text(C_values[i], gamma_values[i], f"{round(value, 3)}", fontsize=9, ha='center', va='center', color='black')
 
     # Show plot
     plt.grid(True)
@@ -146,7 +146,7 @@ def main():
 
     # Step 2: Define parameter values
     C_values = [0.1, 1, 10]
-    gamma_values = [2, 3, 4]
+    gamma_values = [0.1, 1, 10]
 
     # Step 3: Count Support Vectors
     results_list = train_SVM(X_train, y_train, C_values, gamma_values)
