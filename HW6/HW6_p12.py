@@ -121,7 +121,7 @@ def plot_gamma_selection(gamma_counts):
 
 def main():
     # Load and prepare data
-    data_set_path = "C:/Users/user/Desktop/NTU_myHW/HW5/mnist.scale.train/mnist.scale_small.txt"
+    data_set_path = "C:/Users/user/Desktop/NTU_myHW/HW5/mnist.scale.train/mnist.scale"
     X, y = load_and_prepare_data(data_set_path)
 
     # Define gamma values
