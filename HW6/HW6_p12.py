@@ -1,6 +1,7 @@
+import random
+from collections import Counter
 from libsvm.svmutil import *
 import numpy as np
-import ctypes
 import matplotlib.pyplot as plt
 
 # Read the data
@@ -25,138 +26,112 @@ def load_and_prepare_data(file_path):
                 X.append(features)
     return X, y
 
-def convert_sv_to_matrix(sv, feature_dim):
+def split_data(X, y, val_size=200):
     """
-    Convert the list of dictionaries (support vectors) to a NumPy matrix.
-
-    Args:
-        sv (list of dict): Support vectors in dictionary format.
-        feature_dim (int): Total number of features.
-
-    Returns:
-        np.ndarray: Support vectors as a NumPy matrix.
-    """
-    sv_matrix = np.zeros((len(sv), feature_dim))
-    for i, vec in enumerate(sv):
-        for key, value in vec.items():
-            sv_matrix[i, key - 1] = value  
-    return sv_matrix
-    
-def calculate_gaussian_kernel(sv_matrix, gamma):
-    """
-    Calculate the Gaussian kernel for the support vectors.
-
-    Args:
-        sv (list): Support vectors.
-        gamma (float): Gamma value.
-
-    Returns:
-        np.ndarray: Kernel matrix.
-    """
-    kernel_matrix = np.zeros((len(sv_matrix), len(sv_matrix)))
-    for i in range(len(sv_matrix)):
-        for j in range(len(sv_matrix)):
-            kernel_matrix[i, j] = np.exp(-gamma * np.linalg.norm(sv_matrix[i] - sv_matrix[j]) ** 2)
-    return kernel_matrix
-
-
-# Find the number of support vectors for each combination of C and Q
-def train_SVM(X, y, C_values, gamma_values):
-    """
-    Train SVM models for each combination of C and Q, and count support vectors.
+    Split the dataset into training and validation sets.
 
     Args:
         X (list): Feature vectors.
         y (list): Labels.
-        C_values (list): List of C values to test.
-        Q_values (list): List of Q values to test.
+        val_size (int): Number of samples for the validation set.
 
     Returns:
-        dict: Results with (C, Q) as keys and number of support vectors as values.
+        tuple: (X_train, y_train, X_val, y_val)
     """
-    results = {
-        (C, gamma): None for C in C_values for gamma in gamma_values
-    }
-    
-    feature_dim = max(max(x.keys()) for x in X)
+    indices = list(range(len(X)))
+    random.shuffle(indices)
+    val_indices = indices[:val_size]
+    train_indices = indices[val_size:]
 
-    for C in C_values:
-        for gamma in gamma_values:
-            
-            param = f"-s 0 -t 2 -c {C} -g {gamma} -q"
+    X_val = [X[i] for i in val_indices]
+    y_val = [y[i] for i in val_indices]
+    X_train = [X[i] for i in train_indices]
+    y_train = [y[i] for i in train_indices]
 
-            model = svm_train(y, X, param)
-            
-            # Retrieve support vector coefficients (sv_coef) and support vectors (SV)
-            sv_coef = np.array(model.get_sv_coef())  # Dual coefficients
-            sv_indices = model.get_sv_indices()
-            sv_labels = np.array([y[i - 1] for i in sv_indices])
-            sv = model.get_SV()
-            sv_matrix = convert_sv_to_matrix(sv, feature_dim)
-            kernel_matrix = calculate_gaussian_kernel(sv_matrix, gamma)
+    return X_train, y_train, X_val, y_val
 
-            # Calculate the w & margin
-            w = 0
-            for i in sv_coef:
-                for j in sv_labels:
-                    w += i * j * kernel_matrix
-
-            margin = 1 / np.linalg.norm(w)
-
-            print(f"margin : {margin}")
-
-            results[(C, gamma)] = round(margin)
-
-    return results
-
-
-# Plot margin for each combination of C and gamma
-def plot_margin(results_list):
+def evaluate_model(model, X_val, y_val):
     """
-    Plots margin for each (C, gamma) combination.
+    Evaluate the model on the validation set using 0/1 error.
 
     Args:
-        results (dict): Results from train_SVM, where keys are (C, gamma) tuples and values are margin values.
+        model: Trained SVM model.
+        X_val (list): Validation feature vectors.
+        y_val (list): Validation labels.
+
+    Returns:
+        float: Validation error.
     """
-    # Extract data for plotting
-    C_values = [key[0] for key in results_list.keys()]
-    gamma_values = [key[1] for key in results_list.keys()]
-    margin_list = list(results_list.values())
+    _, p_acc, _ = svm_predict(y_val, X_val, model, '-q')
+    error = 100 - p_acc[0]  # 0/1 error as percentage
+    return error
 
-    # Create scatter plot
-    plt.figure(figsize=(10, 6))
-    scatter = plt.scatter(C_values, gamma_values, c=margin_list, cmap='viridis', s=100)
-    plt.colorbar(scatter, label='Value of margin')
+def validation_procedure(X, y, gamma_values, num_repeats=128, val_size=200):
+    """
+    Perform the validation procedure to choose the best gamma.
 
-    # Label axes and title
-    plt.xlabel('C Values')
-    plt.ylabel('gamma Values')
-    plt.title('Margin for Different (C, gamma) Combinations')
+    Args:
+        X (list): Feature vectors.
+        y (list): Labels.
+        gamma_values (list): List of gamma values to test.
+        num_repeats (int): Number of repetitions for the procedure.
+        val_size (int): Number of samples for the validation set.
 
-    # Annotate each point with its support vector count
-    for i, value in enumerate(margin_list):
-        plt.text(C_values[i], gamma_values[i], f"{value:.2e}", fontsize=9, ha='center', va='center', color='black')
+    Returns:
+        Counter: Frequency of each gamma being selected.
+    """
+    gamma_counts = Counter()
 
-    # Show plot
-    plt.grid(True)
+    for _ in range(num_repeats):
+        X_train, y_train, X_val, y_val = split_data(X, y, val_size)
+        best_gamma = None
+        lowest_error = float('inf')
+
+        for gamma in gamma_values:
+            param = f"-s 0 -t 2 -c 1 -g {gamma} -q"
+            model = svm_train(y_train, X_train, param)
+            Eval = evaluate_model(model, X_val, y_val)
+
+            if Eval < lowest_error or (Eval == lowest_error and (best_gamma is None or gamma < best_gamma)):
+                lowest_error = Eval
+                best_gamma = gamma
+
+        gamma_counts[best_gamma] += 1
+
+    return gamma_counts
+
+def plot_gamma_selection(gamma_counts):
+    """
+    Plot the frequency of each gamma being selected.
+
+    Args:
+        gamma_counts (Counter): Frequency of each gamma being selected.
+    """
+    gamma_values = list(gamma_counts.keys())
+    frequencies = list(gamma_counts.values())
+
+    plt.figure(figsize=(8, 5))
+    plt.bar(gamma_values, frequencies, color='skyblue', edgecolor='black')
+    plt.xlabel('Gamma Values')
+    plt.ylabel('Selection Frequency')
+    plt.title('Gamma Selection Frequency')
+    plt.xticks(gamma_values)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.show()
 
-
 def main():
-    # Step 1: Load and prepare data
-    data_set_path = "C:/Users/user/Desktop/NTU_myHW/HW5/mnist.scale.train/mnist.scale" 
-    X_train, y_train = load_and_prepare_data(data_set_path)
+    # Load and prepare data
+    data_set_path = "C:/Users/user/Desktop/NTU_myHW/HW5/mnist.scale.train/mnist.scale_small.txt"
+    X, y = load_and_prepare_data(data_set_path)
 
-    # Step 2: Define parameter values
-    C_values = [0.1, 1, 10]
-    gamma_values = [2, 3, 4]
+    # Define gamma values
+    gamma_values = [0.01, 0.1, 1, 10, 100]
 
-    # Step 3: Count Support Vectors
-    results_list = train_SVM(X_train, y_train, C_values, gamma_values)
-    
-    # Step 4: Plot margin for each combination of C and Q
-    plot_margin(results_list)
+    # Perform validation procedure
+    gamma_counts = validation_procedure(X, y, gamma_values, num_repeats=128, val_size=200)
+
+    # Plot the results
+    plot_gamma_selection(gamma_counts)
 
 if __name__ == "__main__":
     main()
-
