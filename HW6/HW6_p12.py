@@ -96,7 +96,10 @@ def train_SVM(X, y, C_values, gamma_values):
             kernel_matrix = calculate_gaussian_kernel(sv_matrix, gamma)
 
             # Calculate the w & margin
-            w = np.sum(sv_coef * sv_labels * kernel_matrix, axis=0)
+            w = 0
+            for i in sv_coef:
+                for j in sv_labels:
+                    w += i * j * kernel_matrix
 
             margin = 1 / np.linalg.norm(w)
 
