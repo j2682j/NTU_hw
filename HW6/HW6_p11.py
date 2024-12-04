@@ -69,10 +69,10 @@ def train_SVM(X, y, C_values, gamma_values):
         X (list): Feature vectors.
         y (list): Labels.
         C_values (list): List of C values to test.
-        Q_values (list): List of Q values to test.
+        gamma_values (list): List of gamma values to test.
 
     Returns:
-        dict: Results with (C, Q) as keys and number of support vectors as values.
+        dict: Results with (C, gamma) as keys and margin as values.
     """
     results = {
         (C, gamma): None for C in C_values for gamma in gamma_values
