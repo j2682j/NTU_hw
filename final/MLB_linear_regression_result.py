@@ -1,4 +1,5 @@
 from math import e
+from multiprocessing import process
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -42,8 +43,10 @@ def process_func(file_path):
 
 # Calculate the W_lin
 def linear_regression(X, y):
-    X_dagger = np.linalg.pinv(X)  
-    return np.dot(X_dagger, y)    
+    XT_X = np.dot(X.T, X)
+    pseudo_inverse = np.linalg.inv(XT_X).dot(X.T)
+    w_lin = np.dot(pseudo_inverse, y)
+    return w_lin
 
 # Calculate the error_out
 def Error_measure(X, y, w):
@@ -58,21 +61,27 @@ def Error_measure(X, y, w):
 
 # Prediction
 def predict(X, w):
+    predictions_list = []
     for i in range(len(X)):
         item = X[i]
         predictions = np.dot(item, w)
-    return predictions
+        predictions_list.append(predictions)
+    return predictions_list
 
 
 def main():
     train_file_path = 'C:/Users/user/Desktop/NTU_hw/final/html-2024-fall-final-project-stage-1/train_data.csv'
-    #test_file_path = 'C:/Users/user/Desktop/NTU_hw/final/html-2024-fall-final-project-stage-1/same_season_test_data.csv'
+    test_file_path = 'C:/Users/user/Desktop/NTU_hw/final/html-2024-fall-final-project-stage-1/same_season_test_data.csv'
 
     processed_train_data = process_func(train_file_path)
+    processed_test_data = process_func(test_file_path)
 
-    # Split data into features and target
-    y = np.array(processed_train_data['home_team_win'])
-    X = np.array(processed_train_data.drop(columns=['home_team_win']))
+    # Split train data into features and target
+    y_train = np.array(processed_train_data['home_team_win'])
+    X_train = np.array(processed_train_data.drop(columns=['home_team_win']))
+
+    # Split test data into features and target
+    X_test = np.array(processed_test_data)
 
     '''
     # Split data into training and testing
@@ -102,12 +111,20 @@ def main():
         print(f"N = {N}, Avg Eout = {Average_error:.4f}")
     '''
     # Linear regression
-    w_lin = linear_regression(X, y)
+    w_lin = linear_regression(X_train, y_train)
 
-    predict_result = predict(X, y, w_lin)
+    predict_result = predict(X_test, w_lin)
 
+    
+    # Convert the prediction result to 0/1
+    
+    
 
-
+    
+    # Store the prediction result
+    predict_CSV = pd.DataFrame(predict_result, columns=['home_team_win'])
+    predict_CSV.index.name = 'id'
+    predict_CSV.to_csv('C:/Users/user/Desktop/NTU_myHW/final/Linear_regression_predict.csv', index=True)    
 
 if __name__ == '__main__':
     main()
