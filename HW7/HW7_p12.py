@@ -50,10 +50,10 @@ def decision_stump_multidim(X_train, y_train, sample_weights):
                     best_s = s
                     best_threshold = threshold
                     best_predictions = predictions
-    return best_predictions, best_threshold, best_s
+    return best_predictions
     
 # AdaBoost algorithm with multi-dimensional decision stumps
-def adaboost_stump(X_train, y_train, sample_weights, T = 10):
+def adaboost_stump(X_train, y_train, sample_weights, T = 1):
     """
     input :
         X : training data, shape = (N, d)
@@ -105,18 +105,22 @@ def adaboost_stump(X_train, y_train, sample_weights, T = 10):
 
 
 def plot(Ein_list, U_list):
-    plt.plot(Ein_list, label='Ein')
-    plt.plot(U_list, label='U_t')
-    plt.xlabel('t')
+
+    t_values = np.arange(1, len(Ein_list) + 1)  
+    
+    plt.plot(t_values, Ein_list, label=r'$E_{\text{in}}(G_t)$ (Training Error)', color='blue')
+    plt.plot(t_values, U_list, label=r'$U_t$', color='red')
+    
+    plt.title(r'Comparison of $E_{\text{in}}(G_t)$ and $U_t$')
+    plt.xlabel('Iteration t')
     plt.ylabel('Error')
     plt.legend()
+    plt.grid()
     plt.show()
-     
 
 
 def main():
     train_path = 'C:/Users/user/Desktop/NTU_myHW/HW7/madelon.t'
-    test_path = 'C:/Users/user/Desktop/NTU_myHW/HW7/madelon.t'
 
     y_train, X_train = load_libsvm_data(train_path)
     
@@ -124,7 +128,7 @@ def main():
     sample_weights = np.ones(len(X_train)) / len(X_train)
 
 
-    Ein_list, U_list = adaboost_stump(X_train, y_train, sample_weights, T = 500)
+    Ein_list, U_list = adaboost_stump(X_train, y_train, sample_weights, T = 1)
 
     plot(Ein_list, U_list)
 

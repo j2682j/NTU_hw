@@ -103,13 +103,18 @@ def adaboost_stump(X_train, y_train, X_test, y_test,sample_weights, T = 500):
 
 
 def plot(Ein_list, Eout_list):
-    plt.plot(Ein_list, label='Ein')
-    plt.plot(Eout_list, label='Eout')
-    plt.xlabel('t')
+
+    t_values = np.arange(1, len(Ein_list) + 1)  
+    
+    plt.plot(t_values, Ein_list, label=r'$E_{\text{in}}(G_t)$ (Training Error)', color='blue')
+    plt.plot(t_values, Eout_list, label=r'$E_{\text{out}}(G_t)$ (Testing Error)', color='green')
+    
+    plt.title(r'Comparison of $E_{\text{in}}(G_t)$ and $E_{\text{out}}(G_t)$ over Iterations')
+    plt.xlabel('Iteration t')
     plt.ylabel('Error')
     plt.legend()
+    plt.grid()
     plt.show()
-     
 
 
 def main():
