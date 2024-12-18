@@ -53,7 +53,7 @@ def decision_stump_multidim(X_train, y_train, sample_weights):
     return best_predictions, best_threshold, best_s
     
 # AdaBoost algorithm with multi-dimensional decision stumps
-def adaboost_stump(X_train, y_train, X_test, y_test,sample_weights, T = 500):
+def adaboost_stump(X_train, y_train, sample_weights, T = 10):
     """
     input :
         X : training data, shape = (N, d)
@@ -64,47 +64,49 @@ def adaboost_stump(X_train, y_train, X_test, y_test,sample_weights, T = 500):
         epsilon_list : list of epsilon_t
         ein_list : list of E_in(t)
     """
-    N_train, N_test = len(y_train), len(y_test)
-    Eout_list = []
+    N_train = len(y_train)
+    U_list = []
     Ein_list = []
 
     # Initialize the cumulative g_t(x)
     G_train = np.zeros(N_train)
-    G_test = np.zeros(N_test)
+
+    # Initialize the cumulative U_t
+    U_t = np.zeros(N_train)
 
     for t in range(T):
         # Step 1: Train multi-dimensional decision stump with weighted data
-        predictions, best_threshold, best_s = decision_stump_multidim(X_train, y_train, sample_weights)
+        predictions = decision_stump_multidim(X_train, y_train, sample_weights)
         
         # Step 2: Update the weights
         epsilon_t = np.sum(sample_weights * (predictions != y_train)) / np.sum(sample_weights)
         
         diamond_t = np.sqrt((1 - epsilon_t) / epsilon_t)
         sample_weights = np.where(predictions != y_train, sample_weights * diamond_t, sample_weights / diamond_t)
-       
+
+        # Calculate U_t
+        U_t += np.sum(sample_weights)
+        U_list.append(U_t)
+        
         # Step 3: Calculate the alpha
         alpha_t = np.log(diamond_t)   
     
         # Step 4: Update the cumulative g_t(x)
         G_train += alpha_t * predictions
-        for i in range(X_test.shape[1]):
-            G_test += alpha_t * best_s * np.sign(X_test[:, i] - best_threshold)
 
-        # Calculate E_in(t) and E_out(t)
+        # Calculate E_in(t)
         Ein_t = np.mean(np.sign(G_train) != y_train)
-        Eout_t = np.mean(np.sign(G_test) != y_test)
 
         Ein_list.append(Ein_t)
-        Eout_list.append(Eout_t)
-
-        print(f'Iteration{t+1} : E_in(t) = {Ein_t:.4f}, E_out(t) = {Eout_t:.4f}')
-    return Ein_list, Eout_list
 
 
+    return Ein_list, U_list
 
-def plot(Ein_list, Eout_list):
+
+
+def plot(Ein_list, U_list):
     plt.plot(Ein_list, label='Ein')
-    plt.plot(Eout_list, label='Eout')
+    plt.plot(U_list, label='U_t')
     plt.xlabel('t')
     plt.ylabel('Error')
     plt.legend()
@@ -117,14 +119,14 @@ def main():
     test_path = 'C:/Users/user/Desktop/NTU_myHW/HW7/madelon.t'
 
     y_train, X_train = load_libsvm_data(train_path)
-    y_test, X_test = load_libsvm_data(test_path)
+    
 
     sample_weights = np.ones(len(X_train)) / len(X_train)
 
 
-    Ein_list, Eout_list = adaboost_stump(X_train, y_train, X_test, y_test, sample_weights, T = 500)
+    Ein_list, U_list = adaboost_stump(X_train, y_train, sample_weights, T = 500)
 
-    plot(Ein_list, Eout_list)
+    plot(Ein_list, U_list)
 
 
 if __name__ == '__main__':
