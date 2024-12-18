@@ -53,7 +53,7 @@ def decision_stump_multidim(X_train, y_train, sample_weights):
     return best_predictions
     
 # AdaBoost algorithm with multi-dimensional decision stumps
-def adaboost_stump(X_train, y_train, sample_weights, T = 1):
+def adaboost_stump(X_train, y_train, sample_weights, T = 500):
     """
     input :
         X : training data, shape = (N, d)
@@ -128,7 +128,7 @@ def main():
     sample_weights = np.ones(len(X_train)) / len(X_train)
 
 
-    Ein_list, U_list = adaboost_stump(X_train, y_train, sample_weights, T = 1)
+    Ein_list, U_list = adaboost_stump(X_train, y_train, sample_weights, T = 500)
 
     plot(Ein_list, U_list)
 
