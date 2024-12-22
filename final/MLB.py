@@ -239,8 +239,11 @@ def main():
         for i in range(len(final_prediction)):
             f.write(f"{i},{(final_prediction[i])}\n")
     
+    Eval_avg = np.mean(Eval_t)
+
     plt.figure(figsize=(10, 6))
     plt.plot(Eval_t, label="Eval")
+    plt.plot(Eval_avg, label="Eval_avg")
     plt.xlabel("Iterations (t)")
     plt.ylabel("Error")
     plt.title("Eval vs Iterations")
