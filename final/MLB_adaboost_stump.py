@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from liblinear.liblinearutil import *
 import test
 import pandas as pd
-
+from sklearn.model_selection import KFold
   
 def retrieve_column(train_file_path, test_file_path):
     
@@ -207,7 +207,8 @@ def adaboost_stump(X_train, y_train, sample_weights, T = 1):
         G_train += alpha_t * predictions
 
         # Output the prediction of the final hypothesis
-
+        print(f'Iteration {t + 1} best_threshold : {best_threshold}')
+    
     return alpha_t, best_threshold, best_s
 
 
@@ -219,6 +220,7 @@ def main():
     
     G = np.zeros(len(y_train))
 
+    '''
     sample_weights = np.ones(len(X_train)) / len(X_train)
 
 
@@ -226,9 +228,34 @@ def main():
     
     for i in range(X_test.shape[1]):
             G += alpha_t * best_s * np.sign(X_test[:, i] - best_threshold)
+    '''
+    Eval_list = {}
+    best_Eval = 1
+    best_threshold = 0
+    best_s = 0
+    best_alpha_t = 0
+    for t in range(50, 300, 50):
+        kfold = KFold(n_splits = 5, shuffle = True)
+        for (train_index, valid_index) in kfold.split(X_train, y_train):
+            X_train_train, X_train_valid = X_train[train_index], X_train[valid_index]
+            y_train_train, y_train_valid = y_train[train_index], y_train[valid_index]
+            sample_weights = np.ones(len(X_train_train)) / len(X_train_train)
+            alpha_t, best_threshold, best_s = adaboost_stump(X_train_train, y_train_train, sample_weights, t = 1)
+            for i in range(X_train_valid.shape[1]):
+                G += alpha_t * best_s * np.sign(X_train_valid[:, i] - best_threshold)
+                Eval = np.mean(np.sign(G) != y_train_valid)
+                Eval_list[t] = Eval
+                if Eval < best_Eval:
+                    best_Eval = Eval
+                    best_threshold = best_threshold
+                    best_s = best_s
+                    best_alpha_t = alpha_t
+    print(f"best_Eval : {best_Eval}, best_threshold : {best_threshold}, best_s : {best_s}, best_alpha_t : {best_alpha_t}")
 
+    for i in range(X_test.shape[1]):
+            G += best_alpha_t * best_s * np.sign(X_test[:, i] - best_threshold)
     
-    with open("C:/Users/user/Desktop/NTU_myHW/final/result_all.csv", 'w') as f:
+    with open("C:/Users/user/Desktop/NTU_hw/final/result_all.csv", 'w') as f:
         f.write("id,home_team_win\n")
         for i in range(len(G)):
             f.write(f"{i},{(G[i])}\n")
