@@ -1,11 +1,9 @@
-from matplotlib.pylab import f
 import numpy as np
 import matplotlib.pyplot as plt
-from liblinear.liblinearutil import *
-import test
+from sklearn.datasets import load_svmlight_file
 import pandas as pd
 from sklearn.model_selection import KFold
-  
+#Read data
 def retrieve_column(train_file_path, test_file_path):
     
     # Load the train data
@@ -125,144 +123,129 @@ def retrieve_column(train_file_path, test_file_path):
 
     return X_10RA_train, X_10RA_test, X_all_train, X_all_test, y_train
 
-# Decision stump algorithm for multi-dimensional data
-def decision_stump_multidim(X_train, y_train, sample_weights):
-    """
-    input : 
-        X_train : training data, shape = (N, d)
-        y_train : training labels, shape = (N,)
-        sample_weights : sample weights, shape = (N,)
-    output :
-        best_stump : the best decision stump found, a dictionary
-        best_predictions : the predictions of the best decision stump    
-    """
-    d = X_train.shape[1]
-    min_error = 1
-    best_predictions = None
-    best_threshold = None
-    best_s = None
-    for i in range(d):
-        # Sort the data by the i-th feature
-        feature_values = X_train[:, i]
-        sorted_indices = np.argsort(feature_values)
-        sorted_X_train = X_train[sorted_indices]
-
-        # Calculate the thresholds(mean of two adjacent points) for the i-th feature
-        thresholds = (sorted_X_train[:-1, i] + sorted_X_train[1:, i]) / 2
-
-        # Try s = {1, -1}
-        for s in [1, -1]:
-            for threshold in thresholds:
-                predictions = s * np.sign(feature_values - threshold)
-                E_u_in = np.average(predictions != y_train, weights=sample_weights)                 
-                if E_u_in < min_error:
-                    min_error = E_u_in
-                    best_s = s
-                    best_threshold = threshold
-                    best_predictions = predictions
-    return best_predictions, best_threshold, best_s
+def find_best_stump(X, y, weights):
+    n_samples, n_dimension = X.shape
+    best_stump = {"dimension": None, "threshold": None, "direction": 1, "error": float("inf")}
     
-# AdaBoost algorithm with multi-dimensional decision stumps
-def adaboost_stump(X_train, y_train, sample_weights, T = 1):
-    """
-    input :
-        X : training data, shape = (N, d)
-        y : training labels, shape = (N,)
-        sample_weights : sample weights, shape = (N,)
-        T : number of iterations
-    output :
-        epsilon_list : list of epsilon_t
-        ein_list : list of E_in(t)
-    """
-    N_train = len(y_train)
-    U_list = []
+    for dimension in range(n_dimension):
+        thresholds = np.unique(X[:, dimension])
+        for threshold in thresholds:
+            for direction in [1, -1]:
+                prediction = np.ones(n_samples)
+                if direction == 1:
+                    prediction[X[:, dimension] < threshold] = -1
+                else:
+                    prediction[X[:, dimension] >= threshold] = -1
+                
+                weighted_error = np.sum(weights[y != prediction])/np.sum(weights)
+                
+                if weighted_error < best_stump["error"]:
+                    best_stump["dimension"] = dimension
+                    best_stump["threshold"] = threshold
+                    best_stump["direction"] = direction
+                    best_stump["error"] = weighted_error
     
+    return best_stump
 
-    # Initialize the cumulative g_t(x)
-    G_train = np.zeros(N_train)
+def stump_predict(X, stump):
+    dimension, threshold, direction = stump["dimension"], stump["threshold"], stump["direction"]
+    prediction = np.ones(X.shape[0])
+    if direction == 1:
+        prediction[X[:, dimension] < threshold] = -1
+    else:
+        prediction[X[:, dimension] >= threshold] = -1
+    return prediction
 
-    # Initialize the cumulative U_t
-    U_t = np.zeros(N_train)
-
+def adaboost(X, y, T):
+    n_samples, n_dimension = X.shape
+    weights = np.ones(n_samples) / n_samples
+    stumps = []
+    alphas = []
+    errors = []
+    sum_of_weights = []
+    
     for t in range(T):
-        # Step 1: Train multi-dimensional decision stump with weighted data
-        predictions, best_threshold, best_s = decision_stump_multidim(X_train, y_train, sample_weights)
-        
-        # Step 2: Update the weights
-        epsilon_t = np.sum(sample_weights * (predictions != y_train)) / np.sum(sample_weights)
-        
-        diamond_t = np.sqrt((1 - epsilon_t) / epsilon_t)
-        sample_weights = np.where(predictions != y_train, sample_weights * diamond_t, sample_weights / diamond_t)
+        sum_of_weights.append(np.sum(weights))
 
-        # Calculate U_t
-        U_t += np.sum(sample_weights)
-        
-        U_list.append(U_t)
-        
+        # Find best stump
+        stump = find_best_stump(X, y, weights)
+        prediction = stump_predict(X, stump)
 
-        # Step 3: Calculate the alpha
-        alpha_t = np.log(diamond_t)   
+        # Calculate alpha (stump weight)
+        epsilon = stump["error"]
+        alpha = 0.5 * np.log((1 - epsilon) / (epsilon + 1e-10))
+        
+        # Update weights
+        weights *= np.exp(-alpha * y * prediction)
+        
+        # Save stump and alpha
+        stumps.append(stump)
+        alphas.append(alpha)
+        errors.append(epsilon)
+        print(t)
     
-        # Step 4: Update the cumulative g_t(x)
-        G_train += alpha_t * predictions
+    return stumps, alphas, errors, sum_of_weights
 
-        # Output the prediction of the final hypothesis
-        print(f'Iteration {t + 1} best_threshold : {best_threshold}')
-    
-    return alpha_t, best_threshold, best_s
+def calculate_error(X, y, stumps, alphas):
+    n_samples = len(y)
+    final_prediction = np.zeros(n_samples)
+    for stump, alpha in zip(stumps, alphas):
+        final_prediction += alpha * stump_predict(X, stump)
+    final_prediction = np.sign(final_prediction)
+    error = np.mean(final_prediction != y)
+    return error
 
-
+#train
 def main():
     train_path = 'C:/Users/user/Desktop/NTU_hw/final/html-2024-fall-final-project-stage-1/train_data.csv'
     test_path = 'C:/Users/user/Desktop/NTU_hw/final/html-2024-fall-final-project-stage-1/same_season_test_data.csv'
 
     _, _, X_train, X_test, y_train = retrieve_column(train_path, test_path)
     
-    G = np.zeros(len(y_train))
-
-    '''
-    sample_weights = np.ones(len(X_train)) / len(X_train)
-
-
-    alpha_t, best_threshold, best_s = adaboost_stump(X_train, y_train, sample_weights, T = 1)
-    
-    for i in range(X_test.shape[1]):
-            G += alpha_t * best_s * np.sign(X_test[:, i] - best_threshold)
-    '''
-    Eval_list = {}
     best_Eval = 1
-    best_threshold_output = 0
-    best_s_output = 0
-    best_alpha_t = 0
-    for t in range(50, 300, 50):
+    best_stumps = None
+    best_alphas = None
+    Eval_t = {}
+    for T in range(1, 300):
         kfold = KFold(n_splits = 5, shuffle = True)
         for (train_index, valid_index) in kfold.split(X_train, y_train):
-            X_train_train, X_train_valid = X_train[train_index], X_train[valid_index]
-            y_train_train, y_train_valid = y_train[train_index], y_train[valid_index]
-            G = np.zeros(len(y_train_valid))
-            X_train_train, X_train_valid = X_train[train_index], X_train[valid_index]
-            y_train_train, y_train_valid = y_train[train_index], y_train[valid_index]
-            sample_weights = np.ones(len(X_train_train)) / len(X_train_train)
-            alpha_t, best_threshold, best_s = adaboost_stump(X_train_train, y_train_train, sample_weights, T = 1)
-            for i in range(X_train_valid.shape[1]):
-                G += alpha_t * best_s * np.sign(X_train_valid[:, i] - best_threshold)
-                Eval = np.mean(np.sign(G) != y_train_valid)
-                Eval_list[t] = Eval
-                if Eval < best_Eval:
-                    best_Eval = Eval
-                    best_threshold_output = best_threshold
-                    best_s_output = best_s
-                    best_alpha_t = alpha_t
-    print(f"best_Eval : {best_Eval}, best_threshold : {best_threshold_output}, best_s : {best_s_output}, best_alpha_t : {best_alpha_t}")
-
-    for i in range(X_test.shape[1]):
-            G += best_alpha_t * best_s_output * np.sign(X_test[:, i] - best_threshold_output)
-    
+            X_train_train, X_valid = X_train[train_index], X_train[valid_index]
+            y_train_train, y_valid = y_train[train_index], y_train[valid_index]
+            stumps, alphas, _, sum_of_weights = adaboost(X_train_train, y_train_train, T)
+            Eval = calculate_error(X_valid, y_valid, stumps, alphas)
+            print(f"T = {T}, Eval = {Eval}")
+            if Eval < best_Eval:
+                best_stumps = stumps
+                best_alphas = alphas
+                best_Eval = Eval
+        Eval_t[T] = best_Eval
+        print(f"T = {T}, Best Eval = {best_Eval}")
+    n_samples = len(y_train)
+    final_prediction = np.zeros(n_samples)
+    for stump, alpha in zip(best_stumps, best_alphas):
+        final_prediction += alpha * stump_predict(X_test, stump)
+    final_prediction = np.sign(final_prediction)
+   
     with open("C:/Users/user/Desktop/NTU_hw/final/result_all.csv", 'w') as f:
         f.write("id,home_team_win\n")
-        for i in range(len(G)):
-            f.write(f"{i},{(G[i])}\n")
+        for i in range(len(final_prediction)):
+            f.write(f"{i},{(final_prediction[i])}\n")
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, T + 1), Eval_t, label="Eval")
+    plt.xlabel("Iterations (t)")
+    plt.ylabel("Error")
+    plt.title("Eval vs Iterations")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+        
+    
+
 
 
 if __name__ == '__main__':
     main()
+
+
+
