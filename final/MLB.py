@@ -156,7 +156,7 @@ def stump_predict(X, stump):
         prediction[X[:, dimension] >= threshold] = -1
     return prediction
 
-def adaboost(X, y, T):
+def adaboost(X, y, T = 100):
     n_samples, n_dimension = X.shape
     weights = np.ones(n_samples) / n_samples
     stumps = []
@@ -202,25 +202,33 @@ def main():
 
     _, _, X_train, X_test, y_train = retrieve_column(train_path, test_path)
     
+    '''
+    # Scale the training data, Scalibility = 0.75
+    random_indices = np.random.choice(len(X_train), int(0.75 * len(X_train)), replace=False)
+    X_train = X_train[random_indices]
+    y_train = y_train[random_indices]
+    '''
+
     best_Eval = 1
     best_stumps = None
     best_alphas = None
-    Eval_t = {}
-    for T in range(1, 300):
-        kfold = KFold(n_splits = 5, shuffle = True)
-        for (train_index, valid_index) in kfold.split(X_train, y_train):
-            X_train_train, X_valid = X_train[train_index], X_train[valid_index]
-            y_train_train, y_valid = y_train[train_index], y_train[valid_index]
-            stumps, alphas, _, sum_of_weights = adaboost(X_train_train, y_train_train, T)
-            Eval = calculate_error(X_valid, y_valid, stumps, alphas)
-            print(f"T = {T}, Eval = {Eval}")
-            if Eval < best_Eval:
-                best_stumps = stumps
-                best_alphas = alphas
-                best_Eval = Eval
-        Eval_t[T] = best_Eval
-        print(f"T = {T}, Best Eval = {best_Eval}")
+    Eval_t = []
+   
+    kfold = KFold(n_splits = 5, shuffle = True)
+    for (train_index, valid_index) in kfold.split(X_train, y_train):
+        X_train_train, X_valid = X_train[train_index], X_train[valid_index]
+        y_train_train, y_valid = y_train[train_index], y_train[valid_index]
+        stumps, alphas, _, _ = adaboost(X_train_train, y_train_train, T = 100)
+        Eval = calculate_error(X_valid, y_valid, stumps, alphas)
+        Eval_t.append(Eval)
+        print(f"T = {T}, Eval = {Eval}")
+        if Eval < best_Eval:
+            best_stumps = stumps
+            best_alphas = alphas
+            best_Eval = Eval
+    print(f"Best Eval = {best_Eval}")
     n_samples = len(y_train)
+
     final_prediction = np.zeros(n_samples)
     for stump, alpha in zip(best_stumps, best_alphas):
         final_prediction += alpha * stump_predict(X_test, stump)
@@ -232,7 +240,7 @@ def main():
             f.write(f"{i},{(final_prediction[i])}\n")
     
     plt.figure(figsize=(10, 6))
-    plt.plot(range(1, T + 1), Eval_t, label="Eval")
+    plt.plot(Eval_t, label="Eval")
     plt.xlabel("Iterations (t)")
     plt.ylabel("Error")
     plt.title("Eval vs Iterations")
