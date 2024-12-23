@@ -156,7 +156,7 @@ def stump_predict(X, stump):
         prediction[X[:, dimension] >= threshold] = -1
     return prediction
 
-def adaboost(X, y, T = 100):
+def adaboost(X, y, T = 5):
     n_samples, n_dimension = X.shape
     weights = np.ones(n_samples) / n_samples
     stumps = []
@@ -197,16 +197,16 @@ def calculate_error(X, y, stumps, alphas):
 
 #train
 def main():
-    train_path = 'C:/Users/user/Desktop/NTU_hw/final/html-2024-fall-final-project-stage-1/train_data.csv'
-    test_path = 'C:/Users/user/Desktop/NTU_hw/final/html-2024-fall-final-project-stage-1/same_season_test_data.csv'
+    train_path = 'C:/Users/user/Desktop/NTU_hw/final/html2024-fall-final-project-stage-2/train_data.csv'
+    test_path = 'C:/Users/user/Desktop/NTU_hw/final/html2024-fall-final-project-stage-2/2024_test_data.csv'
 
     _, _, X_train, X_test, y_train = retrieve_column(train_path, test_path)
     
     '''
     # Scale the training data, Scalibility = 0.75
     random_indices = np.random.choice(len(X_train), int(0.75 * len(X_train)), replace=False)
-    X_train = X_train[random_indices]
-    y_train = y_train[random_indices]
+    X_train_scale = X_train[random_indices]
+    y_train_scale = y_train[random_indices]
     '''
 
     best_Eval = 1
@@ -218,7 +218,7 @@ def main():
     for (train_index, valid_index) in kfold.split(X_train, y_train):
         X_train_train, X_valid = X_train[train_index], X_train[valid_index]
         y_train_train, y_valid = y_train[train_index], y_train[valid_index]
-        stumps, alphas, _, _ = adaboost(X_train_train, y_train_train, T = 100)
+        stumps, alphas, _, _ = adaboost(X_train_train, y_train_train, T = 5)
         Eval = calculate_error(X_valid, y_valid, stumps, alphas)
         Eval_t.append(Eval)
         print(f"T = {T}, Eval = {Eval}")
